@@ -2,6 +2,9 @@
   <div class="game-header">
     <h1>Игра на реакцию</h1>
     <div class="controls">
+      <div v-if="isAuthenticated && user" class="user-info">
+        <span class="username">{{ user.username }}</span>
+      </div>
       <button 
         v-if="!gameStarted && !showDifficultySelection" 
         @click="$emit('start-game')" 
@@ -16,6 +19,20 @@
         class="button"
       >
         {{ soundEnabled ? '🔊' : '🔇' }}
+      </button>
+      <button 
+        v-if="!isAuthenticated"
+        @click="$emit('show-auth')" 
+        class="button"
+      >
+        Войти
+      </button>
+      <button 
+        v-if="isAuthenticated"
+        @click="$emit('logout')" 
+        class="button"
+      >
+        Выйти
       </button>
     </div>
   </div>
@@ -36,9 +53,17 @@ export default {
     soundEnabled: {
       type: Boolean,
       required: true
+    },
+    isAuthenticated: {
+      type: Boolean,
+      default: false
+    },
+    user: {
+      type: Object,
+      default: null
     }
   },
-  emits: ['start-game', 'toggle-settings', 'toggle-mute']
+  emits: ['start-game', 'toggle-settings', 'toggle-mute', 'show-auth', 'logout']
 }
 </script>
 

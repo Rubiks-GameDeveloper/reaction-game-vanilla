@@ -46,6 +46,18 @@ body {
     gap: 1rem;
 }
 
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #00ff88;
+    font-size: 0.9rem;
+}
+
+.username {
+    font-weight: bold;
+}
+
 .game-header h1 {
     font-size: clamp(1.5rem, 4vw, 2.5rem);
     margin: 0;
@@ -154,6 +166,28 @@ body {
     font-size: clamp(1.2rem, 3vw, 1.5rem);
 }
 
+.high-scores h3 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    font-size: clamp(1rem, 2.5vw, 1.2rem);
+    color: #00ff88;
+}
+
+.server-scores, .local-scores {
+    margin-bottom: 1.5rem;
+}
+
+.server-item {
+    background: rgba(0, 255, 136, 0.1);
+    border-left: 3px solid #00ff88;
+}
+
+.loading {
+    text-align: center;
+    padding: 2rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
 .scores-list {
     display: flex;
     flex-direction: column;
@@ -163,7 +197,7 @@ body {
 
 .score-item {
     display: grid;
-    grid-template-columns: auto 1fr auto auto;
+    grid-template-columns: auto 1fr auto auto auto;
     gap: 1rem;
     color: white;
     align-items: center;
@@ -171,6 +205,11 @@ body {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 4px;
     font-size: clamp(0.9rem, 2vw, 1rem);
+}
+
+.score-item .username {
+    color: #00ff88;
+    font-weight: bold;
 }
 
 .score-item .reaction-time {

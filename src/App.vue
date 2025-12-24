@@ -4,9 +4,13 @@
       :game-started="gameStarted"
       :show-difficulty-selection="showDifficultySelection"
       :sound-enabled="settings.soundEnabled"
+      :is-authenticated="isAuthenticated"
+      :user="user"
       @start-game="openDifficultySelection"
       @toggle-settings="toggleSettings"
       @toggle-mute="toggleMute"
+      @show-auth="showAuthModal = true"
+      @logout="handleLogout"
     />
 
     <div class="game-content">
@@ -29,7 +33,11 @@
         @exit-game="exitGame"
       />
 
-      <HighScores :high-scores="highScores" />
+      <HighScores 
+        :high-scores="highScores" 
+        :server-leaderboard="serverLeaderboard"
+        :loading-leaderboard="loadingLeaderboard"
+      />
 
       <KeyboardControls />
     </div>
@@ -37,14 +45,21 @@
     <Settings
       v-if="showSettings"
       :settings="settings"
+      :user="user"
       @close="toggleSettings"
       @update-settings="updateSettings"
+    />
+
+    <AuthModal
+      :show="showAuthModal"
+      @close="showAuthModal = false"
+      @success="handleAuthSuccess"
     />
   </div>
 </template>
 
 <script>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import GameHeader from './components/GameHeader.vue'
 import DifficultySelection from './components/DifficultySelection.vue'
 import GameArea from './components/GameArea.vue'
@@ -52,8 +67,12 @@ import GameInfo from './components/GameInfo.vue'
 import HighScores from './components/HighScores.vue'
 import KeyboardControls from './components/KeyboardControls.vue'
 import Settings from './components/Settings.vue'
+import AuthModal from './components/AuthModal.vue'
+import Achievements from './components/Achievements.vue'
+import Friends from './components/Friends.vue'
 import { useGame } from './composables/useGame'
 import { useSoundManager } from './composables/useSoundManager'
+import { useAuth, useGameSessions, useLeaderboard, isAuthenticated, user } from './composables/useApi'
 
 export default {
   name: 'App',
@@ -64,7 +83,10 @@ export default {
     GameInfo,
     HighScores,
     KeyboardControls,
-    Settings
+    Settings,
+    AuthModal,
+    Achievements,
+    Friends
   },
   setup() {
     const showDifficultySelection = ref(false)
@@ -72,8 +94,14 @@ export default {
     const showGameArea = ref(false)
     const showGameInfo = ref(false)
     const currentReactionTime = ref(null)
+    const showAuthModal = ref(false)
+    const serverLeaderboard = ref([])
+    const loadingLeaderboard = ref(false)
 
     const soundManager = useSoundManager()
+    const { fetchUserProfile, logout: apiLogout } = useAuth()
+    const { saveGameSession, loadLatestSession } = useGameSessions()
+    const { getLeaderboard } = useLeaderboard()
 
     const {
       gameStarted,
@@ -114,16 +142,33 @@ export default {
       const reactionTime = hitTargetLogic(target)
       if (reactionTime) {
         currentReactionTime.value = reactionTime
-        setTimeout(() => {
-          currentReactionTime.value = null
-        }, 2000)
+        // Time reaction will stay until next hit or game ends
       }
     }
 
-    const exitGame = () => {
+    const exitGame = async () => {
+      // Save game session to backend if authenticated
+      if (isAuthenticated.value && gameStarted.value) {
+        try {
+          await saveGameSession({
+            gameState: {},
+            score: score.value,
+            difficulty: settings.value.difficulty,
+            timePlayed: difficultyLevels[settings.value.difficulty].gameTime - timeLeft.value,
+            isCompleted: timeLeft.value <= 0,
+            reactionTimes: reactionTimes.value
+          })
+          // Reload leaderboard after saving
+          await loadServerLeaderboard()
+        } catch (error) {
+          console.error('Failed to save game session:', error)
+        }
+      }
+
       endGameLogic()
       showGameArea.value = false
       showGameInfo.value = false
+      currentReactionTime.value = null
     }
 
     const toggleSettings = () => {
@@ -150,7 +195,33 @@ export default {
       saveSettings()
     }
 
+    const loadServerLeaderboard = async () => {
+      loadingLeaderboard.value = true
+      try {
+        const data = await getLeaderboard(null, 10)
+        serverLeaderboard.value = Array.isArray(data) ? data : []
+      } catch (error) {
+        console.error('Failed to load leaderboard:', error)
+        serverLeaderboard.value = []
+      } finally {
+        loadingLeaderboard.value = false
+      }
+    }
+
+    const handleLogout = () => {
+      apiLogout()
+      showAuthModal.value = false
+      serverLeaderboard.value = []
+    }
+
+    const handleAuthSuccess = async () => {
+      await fetchUserProfile()
+      await loadServerLeaderboard()
+    }
+
     const handleKeyPress = (e) => {
+      if (!e || !e.key) return
+      
       switch (e.key.toLowerCase()) {
         case ' ':
           e.preventDefault()
@@ -167,10 +238,45 @@ export default {
       }
     }
 
-    onMounted(() => {
+    // Watch for automatic game end (when timer reaches 0)
+    watch(gameStarted, async (newValue) => {
+      if (!newValue && (showGameArea.value || showGameInfo.value)) {
+        // Save game session if authenticated
+        if (isAuthenticated.value) {
+          try {
+            await saveGameSession({
+              gameState: {},
+              score: score.value,
+              difficulty: settings.value.difficulty,
+              timePlayed: difficultyLevels[settings.value.difficulty].gameTime,
+              isCompleted: true,
+              reactionTimes: reactionTimes.value
+            })
+            await loadServerLeaderboard()
+          } catch (error) {
+            console.error('Failed to save game session:', error)
+          }
+        }
+        
+        // Game ended automatically, hide game UI
+        showGameArea.value = false
+        showGameInfo.value = false
+        currentReactionTime.value = null
+      }
+    })
+
+    onMounted(async () => {
       loadHighScores()
       loadSettings()
       document.addEventListener('keydown', handleKeyPress)
+      
+      // Load user profile if authenticated
+      if (isAuthenticated.value) {
+        await fetchUserProfile()
+      }
+      
+      // Load server leaderboard
+      await loadServerLeaderboard()
     })
 
     onBeforeUnmount(() => {
@@ -191,6 +297,11 @@ export default {
       showGameArea,
       showGameInfo,
       currentReactionTime,
+      showAuthModal,
+      isAuthenticated,
+      user,
+      serverLeaderboard,
+      loadingLeaderboard,
       openDifficultySelection,
       selectDifficulty,
       startGame,
@@ -198,7 +309,9 @@ export default {
       exitGame,
       toggleSettings,
       toggleMute,
-      updateSettings
+      updateSettings,
+      handleLogout,
+      handleAuthSuccess
     }
   }
 }

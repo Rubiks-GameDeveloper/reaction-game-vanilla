@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 
 export function useGame(soundManager) {
   const gameStarted = ref(false)
@@ -112,29 +112,35 @@ export function useGame(soundManager) {
         left: left + 'px',
         top: top + 'px',
         colors: colors,
-        spawnTime: Date.now(),
+        spawnTime: null, // Will be set when element is rendered
         hit: false
       }
 
       targets.value.push(target)
 
+      // Set spawnTime when element is actually rendered in DOM
+      nextTick(() => {
+        const targetElement = document.querySelector(`[data-target-id="${target.id}"]`)
+        if (targetElement) {
+          // Set spawn time when element is visible
+          target.spawnTime = Date.now()
+          
+          // Animate target fade out
+          if (window.gsap) {
+            gsap.to(targetElement, {
+              opacity: 0,
+              scale: 0.8,
+              duration: difficulty.targetLifetime / 1000,
+              ease: "power2.in"
+            })
+          }
+        }
+      })
+
       // Remove target after lifetime
       setTimeout(() => {
         removeTarget(target.id)
       }, difficulty.targetLifetime)
-
-      // Animate target fade out
-      setTimeout(() => {
-        const targetElement = document.querySelector(`[data-target-id="${target.id}"]`)
-        if (targetElement && window.gsap) {
-          gsap.to(targetElement, {
-            opacity: 0,
-            scale: 0.8,
-            duration: difficulty.targetLifetime / 1000,
-            ease: "power2.in"
-          })
-        }
-      }, 10)
 
       spawnTimer.value = setTimeout(() => spawnTarget(), difficulty.spawnRate)
     }, 10)
@@ -146,6 +152,9 @@ export function useGame(soundManager) {
 
   const hitTarget = (target) => {
     if (!gameStarted.value || target.hit) return null
+    
+    // Don't calculate reaction time if spawnTime is not set yet
+    if (!target.spawnTime) return null
 
     target.hit = true
     const difficulty = currentDifficulty.value
