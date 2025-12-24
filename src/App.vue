@@ -33,11 +33,40 @@
         @exit-game="exitGame"
       />
 
+      <!-- Внутри <div class="game-content"> -->
+      <div v-if="!showGameArea && !showDifficultySelection" class="game-menu">
+      <!-- Вкладки появляются только для авторизованных пользователей -->
+        <div v-if="isAuthenticated" class="tabs">
+          <button 
+            :class="{ active: activeTab === 'scores' }" 
+            @click="activeTab = 'scores'"
+          >Рекорды</button>
+          <button 
+            :class="{ active: activeTab === 'achievements' }" 
+            @click="activeTab = 'achievements'"
+          > Достижения </button>
+          <button 
+            :class="{ active: activeTab === 'friends' }" 
+            @click="activeTab = 'friends'"
+          > Друзья </button>
+        </div>
+
+      <!-- Контент вкладок -->
       <HighScores 
+        v-if="activeTab === 'scores'"
         :high-scores="highScores" 
         :server-leaderboard="serverLeaderboard"
         :loading-leaderboard="loadingLeaderboard"
       />
+
+      <Achievements 
+        v-if="isAuthenticated && activeTab === 'achievements'" 
+      />
+
+      <Friends 
+        v-if="isAuthenticated && activeTab === 'friends'" 
+      />
+    </div>
 
       <KeyboardControls />
     </div>
@@ -89,6 +118,7 @@ export default {
     Friends
   },
   setup() {
+    const activeTab = ref('scores');
     const showDifficultySelection = ref(false)
     const showSettings = ref(false)
     const showGameArea = ref(false)
@@ -212,6 +242,8 @@ export default {
       apiLogout()
       showAuthModal.value = false
       serverLeaderboard.value = []
+      // Возвращаем пользователя в главное меню (вкладка "Рекорды")
+      activeTab.value = 'scores'
     }
 
     const handleAuthSuccess = async () => {
@@ -285,6 +317,7 @@ export default {
     })
 
     return {
+      activeTab,
       gameStarted,
       score,
       timeLeft,

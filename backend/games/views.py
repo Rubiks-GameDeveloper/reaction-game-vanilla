@@ -53,24 +53,24 @@ class GameSessionViewSet(viewsets.ModelViewSet):
         )
 
     def perform_create(self, serializer):
-        """Create a new game session and update leaderboard."""
         game_session = serializer.save()
         
-        # Create or update leaderboard entry
-        leaderboard_entry, created = Leaderboard.objects.get_or_create(
-            user=game_session.user,
-            difficulty=game_session.difficulty,
-            defaults={
-                'score': game_session.score,
-                'avg_reaction_time': game_session.avg_reaction_time,
-            }
-        )
-        
-        # Update if score is higher
-        if not created and game_session.score > leaderboard_entry.score:
-            leaderboard_entry.score = game_session.score
-            leaderboard_entry.avg_reaction_time = game_session.avg_reaction_time
-            leaderboard_entry.save()
+        # Обновляем лидерборд только если игра завершена (is_completed=True)
+        if game_session.is_completed:
+            leaderboard_entry, created = Leaderboard.objects.get_or_create(
+                user=game_session.user,
+                difficulty=game_session.difficulty,
+                defaults={
+                    'score': game_session.score,
+                    'avg_reaction_time': game_session.avg_reaction_time,
+                }
+            )
+            
+            if not created and game_session.score > leaderboard_entry.score:
+                leaderboard_entry.score = game_session.score
+                leaderboard_entry.avg_reaction_time = game_session.avg_reaction_time
+                leaderboard_entry.date_achieved = game_session.created_at # Сохраняем дату нового рекорда
+                leaderboard_entry.save()
         
         # Check for achievements
         self._check_achievements(game_session.user, game_session)
@@ -82,18 +82,40 @@ class GameSessionViewSet(viewsets.ModelViewSet):
             if not UserAchievement.objects.filter(user=user, achievement=achievement).exists():
                 # Check if requirements are met
                 requirement = achievement.requirement
-                if self._meets_requirement(game_session, requirement):
+                if self._meets_requirement(game_session, user, requirement):
                     UserAchievement.objects.create(user=user, achievement=achievement)
-    
-    def _meets_requirement(self, game_session, requirement):
+
+    def _meets_requirement(self, game_session, user, requirement):
         """Check if game session meets achievement requirement."""
         if not requirement:
             return False
+        
+        achievement_type = requirement.get('achievement_type')
+        
+        # Достижение: Высокий счет (1000+ очков)
+        if achievement_type == 'high_score':
+            return game_session.score >= requirement.get('min_score', 1000)
+        
+        # Достижение: Быстрая реакция (< 200мс)
+        elif achievement_type == 'fast_reaction':
+            if game_session.avg_reaction_time:
+                return game_session.avg_reaction_time <= requirement.get('max_reaction_time', 200)
+        
+        # Достижение: Количество сыгранных игр (5+)
+        elif achievement_type == 'games_played':
+            user_games = GameSession.objects.filter(
+                user=user, 
+                is_completed=True
+            ).count()
+            return user_games >= requirement.get('min_games', 5)
+        
+        # Другие типы достижений
         if 'min_score' in requirement:
             return game_session.score >= requirement['min_score']
         if 'min_reaction_time' in requirement:
             if game_session.avg_reaction_time:
                 return game_session.avg_reaction_time <= requirement['min_reaction_time']
+        
         return False
 
 
@@ -220,10 +242,10 @@ class FriendshipViewSet(viewsets.ModelViewSet):
             if not UserAchievement.objects.filter(user=user, achievement=achievement).exists():
                 # Check if requirements are met
                 requirement = achievement.requirement
-                if self._meets_requirement(game_session, requirement):
+                if self._meets_requirement(game_session, user, requirement):
                     UserAchievement.objects.create(user=user, achievement=achievement)
 
-    def _meets_requirement(self, game_session, requirement):
+    def _meets_requirement(self, game_session, user, requirement):
         """Check if game session meets achievement requirement."""
         # Simplified logic - expand based on your needs
         if 'min_score' in requirement:

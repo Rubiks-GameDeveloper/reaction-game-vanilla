@@ -154,6 +154,59 @@ body {
     color: #ff4444;
 }
 
+/* Сетка для глобального лидерборда (6 колонок) */
+.score-grid {
+    display: grid;
+    grid-template-columns: 40px 1fr 100px 80px 100px 80px;
+    gap: 10px;
+    padding: 10px;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Сетка для локального лидерборда (4 колонки) */
+.local-header, .item:not(.server-item) {
+    grid-template-columns: 40px 1fr 100px 100px;
+}
+
+.score-grid.header {
+    background: rgba(0, 255, 136, 0.2);
+    color: #00ff88;
+    font-weight: bold;
+    border-radius: 4px 4px 0 0;
+}
+
+.score-grid.item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Стили для вкладок (табов) */
+.tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 20px;
+}
+
+.tabs button {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: 0.3s;
+}
+
+.tabs button.active {
+    background: #00ff88;
+    color: #1a1a1a;
+    font-weight: bold;
+}
+
+.scores-section {
+    margin-bottom: 30px;
+}
+
 .high-scores {
     background: rgba(0, 0, 0, 0.2);
     padding: 1rem;
@@ -215,6 +268,54 @@ body {
 .score-item .reaction-time {
     color: #ff4444;
     font-size: 0.9rem;
+}
+
+.search-box {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    border: 1px solid rgba(0, 255, 136, 0.1);
+}
+
+.search-form {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.search-input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 12px 15px;
+    border-radius: 8px;
+    color: white;
+    font-size: 1rem;
+    outline: none;
+    transition: 0.3s;
+}
+
+.search-input:focus {
+    border-color: #00ff88;
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
+}
+
+.search-button {
+    white-space: nowrap;
+    min-width: 150px;
+}
+
+.error-text {
+    color: #ff4444;
+    font-size: 0.85rem;
+    margin-top: 10px;
+}
+
+.success-text {
+    color: #00ff88;
+    font-size: 0.85rem;
+    margin-top: 10px;
 }
 
 .settings-overlay {

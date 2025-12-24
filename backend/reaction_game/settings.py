@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'django_filters',
+    'drf_spectacular',
     'accounts',
     'games',
 ]
@@ -133,6 +134,7 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 # JWT Settings
@@ -163,4 +165,23 @@ if not DEBUG:
     X_FRAME_OPTIONS = 'DENY'
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# Настройки для DRF Spectacular
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Reaction Game API',
+    'DESCRIPTION': 'API для игры на реакцию с системой пользователей, достижений и друзей',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    # Удалите или измените эти строки для использования встроенных файлов
+    # 'SWAGGER_UI_DIST': 'SIDECAR',
+    # 'SWAGGER_UI_FAVICON_HREF': 'SIDECAR',
+    # 'REDOC_DIST': 'SIDECAR',
+    # OTHER SETTINGS
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SORT_OPERATIONS': False,
+    'TAGS': [
+        {'name': 'accounts', 'description': 'Управление пользователями и аутентификация'},
+        {'name': 'games', 'description': 'Игровые сессии, достижения и друзья'},
+    ],
+}
 

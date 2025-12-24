@@ -14,14 +14,15 @@ RUN apt-get update \
         gcc \
         python3-dev \
         libpq-dev \
+        netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project
-COPY . /app/
+# Copy the application code
+COPY . .
 
 # Create media and static directories
 RUN mkdir -p /app/media /app/staticfiles
@@ -29,6 +30,6 @@ RUN mkdir -p /app/media /app/staticfiles
 # Expose port
 EXPOSE 8000
 
-# Run migrations and start server
-CMD ["sh", "-c", "python manage.py migrate && python manage.py collectstatic --noinput && python manage.py runserver 0.0.0.0:8000"]
+# Default command (will be overridden in docker-compose.yml)
+CMD ["sh", "-c", "python manage.py runserver 0.0.0.0:8000"]
 

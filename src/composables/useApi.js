@@ -359,14 +359,28 @@ export const useFriends = () => {
     }
   }
 
-  const sendFriendRequest = async (userId) => {
+  // Внутри useFriends в src/composables/useApi.js
+  const sendFriendRequest = async (identifier) => {
     try {
+      console.log('Sending friend request for identifier:', identifier)
+      
+      // Отправляем запрос с friend_identifier
+      const requestData = {
+        friend_identifier: identifier.trim()
+      }
+      
+      console.log('Request payload:', requestData)
+      
       const data = await apiRequest('/games/friends/', {
         method: 'POST',
-        body: JSON.stringify({ to_user: userId }),
+        body: JSON.stringify(requestData),
       })
+      
+      console.log('Friend request response:', data)
       return data
     } catch (error) {
+      console.error('Friend request failed:', error)
+      // Передаем ошибку дальше для обработки в компоненте
       throw error
     }
   }

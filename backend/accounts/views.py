@@ -16,6 +16,16 @@ from games.models import UserProfile
 User = get_user_model()
 
 
+# Добавьте документацию для API
+from drf_spectacular.utils import extend_schema, extend_schema_view
+
+@extend_schema_view(
+    create=extend_schema(
+        summary="Регистрация пользователя",
+        description="Создает нового пользователя и возвращает JWT токены",
+        tags=['accounts']
+    )
+)
 class RegisterView(generics.CreateAPIView):
     """
     User registration endpoint.
@@ -44,6 +54,13 @@ class RegisterView(generics.CreateAPIView):
         }, status=status.HTTP_201_CREATED)
 
 
+@extend_schema_view(
+    create=extend_schema(
+        summary="Вход в систему",
+        description="Аутентифицирует пользователя и возвращает JWT токены",
+        tags=['accounts']
+    )
+)
 class LoginView(TokenObtainPairView):
     """
     User login endpoint.
