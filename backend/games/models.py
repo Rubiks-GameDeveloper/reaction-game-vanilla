@@ -51,6 +51,7 @@ class UserProfile(TimeStampedModel):
     class Meta:
         verbose_name = 'Профиль пользователя'
         verbose_name_plural = 'Профили пользователей'
+        ordering = ['-created_at']
 
     def __str__(self):
         return f'Профиль {self.user.username}'
@@ -113,6 +114,7 @@ class GameSession(TimeStampedModel):
         verbose_name = 'Игровая сессия'
         verbose_name_plural = 'Игровые сессии'
         ordering = ['-created_at']
+        ordering = ['-created_at']
 
     def __str__(self):
         return f'Сессия {self.user.username} - {self.score} очков ({self.difficulty})'
@@ -160,9 +162,9 @@ class Leaderboard(TimeStampedModel):
     )
 
     class Meta:
-        verbose_name = 'Запись в таблице лидеров'
-        verbose_name_plural = 'Таблица лидеров'
-        ordering = ['-score', 'date_achieved']
+        verbose_name = 'Таблица лидеров'
+        verbose_name_plural = 'Таблицы лидеров'
+        ordering = ['rank', '-score']
         unique_together = [['user', 'difficulty', 'date_achieved']]
 
     def __str__(self):
@@ -224,6 +226,7 @@ class Achievement(TimeStampedModel):
     class Meta:
         verbose_name = 'Достижение'
         verbose_name_plural = 'Достижения'
+        ordering = ['-created_at']
 
     def __str__(self):
         return self.name
@@ -253,8 +256,8 @@ class UserAchievement(TimeStampedModel):
     class Meta:
         verbose_name = 'Достижение пользователя'
         verbose_name_plural = 'Достижения пользователей'
-        unique_together = [['user', 'achievement']]
         ordering = ['-unlocked_at']
+        unique_together = [['user', 'achievement']]
 
     def __str__(self):
         return f'{self.user.username} - {self.achievement.name}'
@@ -291,10 +294,9 @@ class Friendship(TimeStampedModel):
 
     class Meta:
         verbose_name = 'Дружба'
-        verbose_name_plural = 'Дружба'
+        verbose_name_plural = 'Друзья'
         unique_together = [['from_user', 'to_user']]
         ordering = ['-created_at']
 
     def __str__(self):
         return f'{self.from_user.username} -> {self.to_user.username} ({self.status})'
-

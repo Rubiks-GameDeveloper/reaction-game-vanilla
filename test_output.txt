@@ -1,0 +1,52 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-7.4.3, pluggy-1.6.0
+django: version: 5.0.1, settings: reaction_game.settings (from ini)
+rootdir: /app
+configfile: pytest.ini
+plugins: django-4.7.0
+collected 36 items
+
+games/tests/test_models.py ..........                                    [ 27%]
+games/tests/test_security.py ......F.F                                   [ 52%]
+games/tests/test_views.py F.......F........                              [100%]
+
+=================================== FAILURES ===================================
+_______________ TestIntegrationScenarios.test_complete_game_flow _______________
+games/tests/test_security.py:192: in test_complete_game_flow
+    assert response.status_code == 201
+E   assert 400 == 201
+E    +  where 400 = <Response status_code=400, "application/json">.status_code
+------------------------------ Captured log call -------------------------------
+WARNING  django.request:log.py:241 Bad Request: /api/auth/register/
+______________ TestPerformance.test_no_n_plus_one_in_leaderboard _______________
+games/tests/test_security.py:263: in test_no_n_plus_one_in_leaderboard
+    with django_assert_num_queries(2):  # 1 ╨┤╨╗╤П leaderboard + 1 ╨┤╨╗╤П users (select_related)
+/usr/local/lib/python3.11/contextlib.py:144: in __exit__
+    next(self.gen)
+/usr/local/lib/python3.11/site-packages/pytest_django/fixtures.py:653: in _assert_num_queries
+    pytest.fail(msg)
+E   Failed: Expected to perform 2 queries but 12 were done (add -v option to show queries)
+__________________ TestAuthenticationViews.test_register_user __________________
+games/tests/test_views.py:49: in test_register_user
+    assert response.status_code == status.HTTP_201_CREATED
+E   assert 400 == 201
+E    +  where 400 = <Response status_code=400, "application/json">.status_code
+E    +  and   201 = status.HTTP_201_CREATED
+------------------------------ Captured log call -------------------------------
+WARNING  django.request:log.py:241 Bad Request: /api/auth/register/
+__________ TestLeaderboardViews.test_filter_leaderboard_by_difficulty __________
+games/tests/test_views.py:158: in test_filter_leaderboard_by_difficulty
+    assert entry['difficulty'] == 'easy'
+E   TypeError: string indices must be integers, not 'str'
+=============================== warnings summary ===============================
+games/tests/test_views.py::TestAchievementViews::test_guest_can_view_achievements
+  /usr/local/lib/python3.11/site-packages/rest_framework/pagination.py:200: UnorderedObjectListWarning: Pagination may yield inconsistent results with an unordered object_list: <class 'games.models.Achievement'> QuerySet.
+    paginator = self.django_paginator_class(queryset, page_size)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED games/tests/test_security.py::TestIntegrationScenarios::test_complete_game_flow
+FAILED games/tests/test_security.py::TestPerformance::test_no_n_plus_one_in_leaderboard
+FAILED games/tests/test_views.py::TestAuthenticationViews::test_register_user
+FAILED games/tests/test_views.py::TestLeaderboardViews::test_filter_leaderboard_by_difficulty
+=================== 4 failed, 32 passed, 1 warning in 3.00s ====================

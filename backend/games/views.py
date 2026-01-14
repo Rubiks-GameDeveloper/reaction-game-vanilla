@@ -140,7 +140,7 @@ class LeaderboardViewSet(viewsets.ReadOnlyModelViewSet):
     ViewSet for leaderboard.
     Read-only, accessible to everyone.
     """
-    queryset = Leaderboard.objects.all()
+    queryset = Leaderboard.objects.select_related('user').all()
     serializer_class = LeaderboardSerializer
     permission_classes = [permissions.AllowAny]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
@@ -172,6 +172,7 @@ class AchievementViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Achievement.objects.all()
     serializer_class = AchievementSerializer
     permission_classes = [permissions.AllowAny]
+    ordering = ['-created_at']
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['achievement_type']
     search_fields = ['name', 'description']

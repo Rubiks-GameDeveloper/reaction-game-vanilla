@@ -12,7 +12,7 @@ from .models import (
     Friendship,
     UserProfile
 )
-from django.db.models import Sum, Avg
+from django.db.models import Sum, Avg, Q
 
 User = get_user_model()
 
@@ -115,9 +115,13 @@ class FriendshipSerializer(serializers.ModelSerializer):
             ).first()
             
             if existing_friendship:
-                raise serializers.ValidationError({
-                    "friend_identifier": ["Запрос на дружбу уже существует."]
-                })
+                if existing_friendship.status == 'rejected':
+                    # Удаляем старый отклоненный запрос, чтобы можно было отправить новый
+                    existing_friendship.delete()
+                else:
+                    raise serializers.ValidationError({
+                        "friend_identifier": ["Запрос на дружбу уже существует."]
+                    })
             
             # Устанавливаем найденного пользователя как to_user
             attrs['to_user'] = to_user
