@@ -17,11 +17,6 @@ docker-compose exec backend pytest games/tests/test_models.py
 docker-compose exec backend pytest -v
 ```
 
-### Запуск с покрытием кода:
-```bash
-docker-compose exec backend pytest --cov=games
-```
-
 ## Структура тестов
 
 ### test_models.py
