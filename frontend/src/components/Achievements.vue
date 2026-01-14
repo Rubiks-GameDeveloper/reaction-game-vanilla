@@ -20,9 +20,6 @@
             ✓ Разблокировано
           </div>
         </div>
-        <div class="achievement-points">
-          {{ achievement.points }} очков
-        </div>
       </div>
       <div v-if="achievements.length === 0" class="no-achievements">
         Пока нет достижений

@@ -9,9 +9,10 @@ from .models import (
     Achievement,
     UserAchievement,
     Friendship,
+    Friendship,
     UserProfile
 )
-from django.db.models import Q
+from django.db.models import Sum, Avg
 
 User = get_user_model()
 
@@ -136,3 +137,58 @@ class FriendshipSerializer(serializers.ModelSerializer):
         validated_data['status'] = 'pending'
         return super().create(validated_data)
 
+
+class FriendProfileSerializer(serializers.ModelSerializer):
+    """Serializer for detailed friend profile."""
+    username = serializers.CharField(source='user.username')
+    avatar = serializers.ImageField(source='user.profile.avatar')
+    bio = serializers.CharField(source='user.profile.bio')
+    date_joined = serializers.DateTimeField(source='user.date_joined')
+    
+    # Stats
+    games_played = serializers.SerializerMethodField()
+    avg_reaction_time = serializers.SerializerMethodField()
+    achievements = serializers.SerializerMethodField()
+    high_scores = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UserProfile
+        fields = (
+            'username', 'avatar', 'bio', 'date_joined',
+            'games_played', 'avg_reaction_time', 'achievements', 'high_scores'
+        )
+
+    def get_games_played(self, obj):
+        return GameSession.objects.filter(user=obj.user, is_completed=True).count()
+
+    def get_avg_reaction_time(self, obj):
+        sessions = GameSession.objects.filter(user=obj.user, is_completed=True).exclude(avg_reaction_time__isnull=True)
+        if not sessions.exists():
+            return None
+        return sessions.aggregate(Avg('avg_reaction_time'))['avg_reaction_time__avg']
+
+    def get_achievements(self, obj):
+        user_achievements = UserAchievement.objects.filter(user=obj.user).select_related('achievement')
+        return AchievementSerializer([ua.achievement for ua in user_achievements], many=True).data
+
+    def get_high_scores(self, obj):
+        # Top score for each difficulty
+        scores = {}
+        for diff in ['easy', 'medium', 'hard']:
+            best = GameSession.objects.filter(
+                user=obj.user, 
+                difficulty=diff, 
+                is_completed=True
+            ).order_by('-score').first()
+            if best:
+                scores[diff] = best.score
+        return scores
+
+
+class UserSearchSerializer(serializers.ModelSerializer):
+    """Serializer for searching users."""
+    avatar = serializers.ImageField(source='profile.avatar', read_only=True)
+    
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'avatar')

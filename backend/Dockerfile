@@ -10,11 +10,11 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        postgresql-client \
-        gcc \
-        python3-dev \
-        libpq-dev \
-        netcat-traditional \
+    postgresql-client \
+    gcc \
+    python3-dev \
+    libpq-dev \
+    netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
@@ -29,6 +29,15 @@ RUN mkdir -p /app/media /app/staticfiles
 
 # Expose port
 EXPOSE 8000
+
+# Default command (will be overridden in docker-compose.yml)
+# Copy entrypoint script to root to avoid volume overwrite
+COPY entrypoint.sh /entrypoint.sh
+RUN sed -i 's/\r$//g' /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Run entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
 
 # Default command (will be overridden in docker-compose.yml)
 CMD ["sh", "-c", "python manage.py runserver 0.0.0.0:8000"]

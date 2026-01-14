@@ -19,7 +19,9 @@ from .serializers import (
     LeaderboardSerializer,
     AchievementSerializer,
     UserAchievementSerializer,
-    FriendshipSerializer
+    FriendshipSerializer,
+    FriendProfileSerializer,
+    UserSearchSerializer
 )
 
 User = get_user_model()
@@ -78,44 +80,58 @@ class GameSessionViewSet(viewsets.ModelViewSet):
     def _check_achievements(self, user, game_session):
         """Check and award achievements based on game session."""
         achievements = Achievement.objects.all()
+        print(f"Checking achievements for user {user.username}, total achievements: {achievements.count()}")
         for achievement in achievements:
             if not UserAchievement.objects.filter(user=user, achievement=achievement).exists():
                 # Check if requirements are met
                 requirement = achievement.requirement
+                print(f"Checking achievement '{achievement.name}' with requirement: {requirement}")
                 if self._meets_requirement(game_session, user, requirement):
                     UserAchievement.objects.create(user=user, achievement=achievement)
+                    print(f"✓ Achievement '{achievement.name}' awarded to {user.username}!")
+                else:
+                    print(f"✗ Achievement '{achievement.name}' requirements not met")
+            else:
+                print(f"Achievement '{achievement.name}' already unlocked")
 
     def _meets_requirement(self, game_session, user, requirement):
         """Check if game session meets achievement requirement."""
         if not requirement:
+            print("  No requirement specified")
             return False
         
         achievement_type = requirement.get('achievement_type')
+        print(f"  Achievement type: {achievement_type}")
         
-        # Достижение: Высокий счет (1000+ очков)
-        if achievement_type == 'high_score':
-            return game_session.score >= requirement.get('min_score', 1000)
+        # Достижение: Высокий счет
+        if achievement_type == 'high_score' or 'min_score' in requirement:
+            min_score = requirement.get('min_score', 500)
+            result = game_session.score >= min_score
+            print(f"  High score check: {game_session.score} >= {min_score} = {result}")
+            return result
         
-        # Достижение: Быстрая реакция (< 200мс)
-        elif achievement_type == 'fast_reaction':
+        # Достижение: Быстрая реакция
+        elif achievement_type == 'fast_reaction' or 'max_reaction_time' in requirement:
             if game_session.avg_reaction_time:
-                return game_session.avg_reaction_time <= requirement.get('max_reaction_time', 200)
+                max_time = requirement.get('max_reaction_time', 500)
+                result = game_session.avg_reaction_time <= max_time
+                print(f"  Fast reaction check: {game_session.avg_reaction_time} <= {max_time} = {result}")
+                return result
+            print(f"  No avg_reaction_time data")
+            return False
         
-        # Достижение: Количество сыгранных игр (5+)
-        elif achievement_type == 'games_played':
+        # Достижение: Количество сыгранных игр
+        elif achievement_type == 'games_played' or 'min_games' in requirement:
             user_games = GameSession.objects.filter(
                 user=user, 
                 is_completed=True
             ).count()
-            return user_games >= requirement.get('min_games', 5)
+            min_games = requirement.get('min_games', 3)
+            result = user_games >= min_games
+            print(f"  Games played check: {user_games} >= {min_games} = {result}")
+            return result
         
-        # Другие типы достижений
-        if 'min_score' in requirement:
-            return game_session.score >= requirement['min_score']
-        if 'min_reaction_time' in requirement:
-            if game_session.avg_reaction_time:
-                return game_session.avg_reaction_time <= requirement['min_reaction_time']
-        
+        print("  No matching achievement type")
         return False
 
 
@@ -213,6 +229,7 @@ class FriendshipViewSet(viewsets.ModelViewSet):
         friendship.save()
         return Response({'message': 'Запрос на дружбу отклонен.'})
 
+
     @action(detail=False, methods=['get'])
     def friends(self, request):
         """Get list of accepted friends."""
@@ -233,6 +250,119 @@ class FriendshipViewSet(viewsets.ModelViewSet):
                 }
             })
         return Response(friends)
+
+    @action(detail=False, methods=['get'])
+    def requests_received(self, request):
+        """List pending incoming requests."""
+        requests = Friendship.objects.filter(
+            to_user=request.user,
+            status='pending'
+        )
+        serializer = self.get_serializer(requests, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def requests_sent(self, request):
+        """List pending outgoing requests."""
+        requests = Friendship.objects.filter(
+            from_user=request.user,
+            status='pending'
+        )
+        serializer = self.get_serializer(requests, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def archive(self, request):
+        """List rejected or archived requests."""
+        user = request.user
+        requests = Friendship.objects.filter(
+            Q(from_user=user) | Q(to_user=user),
+            status='rejected'
+        )
+        serializer = self.get_serializer(requests, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def search(self, request):
+        """Search for users to add as friends."""
+        query = request.query_params.get('q', '')
+        if len(query) < 2:
+             return Response([])
+        
+        user = request.user
+        # Find users matching query (username or email)
+        # Exclude self
+        users = User.objects.filter(
+            Q(username__icontains=query) | Q(email__icontains=query)
+        ).exclude(id=user.id)
+        
+        # Exclude existing friends (accepted) or pending requests (sent by me)
+        # We allow searching people who sent US a request (so we can accept via search if we want, or just see them)
+        # But logic says: Don't show if already friends.
+        
+        existing_friend_ids = []
+        friendships = Friendship.objects.filter(
+            Q(from_user=user) | Q(to_user=user),
+            status='accepted'
+        )
+        for f in friendships:
+            existing_friend_ids.append(f.to_user.id if f.from_user == user else f.from_user.id)
+            
+        pending_sent_to_ids = Friendship.objects.filter(
+            from_user=user,
+            status='pending'
+        ).values_list('to_user_id', flat=True)
+
+        users = users.exclude(id__in=existing_friend_ids).exclude(id__in=pending_sent_to_ids)
+        
+        serializer = UserSearchSerializer(users, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        """Cancel a sent friend request."""
+        friendship = self.get_object()
+        if friendship.from_user != request.user:
+            return Response(
+                {'error': 'Вы не можете отменить этот запрос.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        friendship.delete()
+        return Response({'message': 'Запрос отменен.'})
+
+    @action(detail=True, methods=['get'])
+    def profile(self, request, pk=None):
+        """Get friend's profile details."""
+        # pk here is the FRIEND's USER ID, not the friendship ID
+        friend_id = pk
+        user = request.user
+        
+        # Allow viewing own profile without friend check
+        if str(friend_id) != str(user.id):
+            # Only check friendship if viewing someone else's profile
+            is_friend = Friendship.objects.filter(
+                (Q(from_user=user, to_user_id=friend_id) | Q(from_user_id=friend_id, to_user=user)),
+                status='accepted'
+            ).exists()
+
+            if not is_friend:
+                return Response(
+                    {'error': 'Пользователь не является вашим другом.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        # Get UserProfile
+        try:
+            profile = User.objects.get(id=friend_id).profile
+        except:
+             return Response(
+                {'error': 'Профиль не найден.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+            
+        serializer = FriendProfileSerializer(profile)
+        return Response(serializer.data)
+
 
     def _check_achievements(self, user, game_session):
         """Check and award achievements based on game session."""

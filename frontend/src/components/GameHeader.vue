@@ -1,9 +1,9 @@
 <template>
   <div class="game-header">
-    <h1>Игра на реакцию</h1>
+    <h1 class="clickable-title" @click="$emit('go-home')">Игра на реакцию</h1>
     <div class="controls">
       <div v-if="isAuthenticated && user" class="user-info">
-        <span class="username">{{ user.username }}</span>
+        <span class="username clickable-username" @click="$emit('show-profile')">{{ user.username }}</span>
       </div>
       <button 
         v-if="!gameStarted && !showDifficultySelection" 
@@ -63,7 +63,27 @@ export default {
       default: null
     }
   },
-  emits: ['start-game', 'toggle-settings', 'toggle-mute', 'show-auth', 'logout']
+  emits: ['start-game', 'toggle-settings', 'toggle-mute', 'show-auth', 'logout', 'go-home', 'show-profile']
 }
 </script>
 
+<style scoped>
+.clickable-title {
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.clickable-title:hover {
+  color: #00ff88;
+}
+
+.clickable-username {
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.clickable-username:hover {
+  color: #00ff88;
+  text-decoration: underline;
+}
+</style>

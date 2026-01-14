@@ -57,7 +57,7 @@ async function apiRequest(endpoint, options = {}) {
       } catch {
         errorData = { detail: `HTTP ${response.status}: ${response.statusText}` }
       }
-      
+
       // Handle validation errors from Django REST Framework
       if (errorData.password || errorData.email || errorData.username || errorData.non_field_errors) {
         const errorMessages = []
@@ -79,7 +79,7 @@ async function apiRequest(endpoint, options = {}) {
         }
         throw new Error(errorMessages.join('; ') || 'Ошибка валидации')
       }
-      
+
       throw new Error(errorData.detail || errorData.message || `HTTP ${response.status}`)
     }
 
@@ -131,9 +131,9 @@ export const useAuth = () => {
         password,
         password2,
       }
-      
+
       console.log('Registering user:', { username, email, password: '***', password2: '***' })
-      
+
       const data = await apiRequest('/auth/register/', {
         method: 'POST',
         body: JSON.stringify(requestData),
@@ -350,37 +350,53 @@ export const useFriends = () => {
     }
   }
 
-  const getFriendRequests = async () => {
+  const getIncomingRequests = async () => {
     try {
-      const data = await apiRequest('/games/friends/')
-      return data.results || data
+      const data = await apiRequest('/games/friends/requests_received/')
+      return data
     } catch (error) {
       throw error
     }
   }
 
-  // Внутри useFriends в src/composables/useApi.js
+  const getSentRequests = async () => {
+    try {
+      const data = await apiRequest('/games/friends/requests_sent/')
+      return data
+    } catch (error) {
+      throw error
+    }
+  }
+
+  const getArchivedRequests = async () => {
+    try {
+      const data = await apiRequest('/games/friends/archive/')
+      return data
+    } catch (error) {
+      throw error
+    }
+  }
+
+  const searchUsers = async (query) => {
+    try {
+      const data = await apiRequest(`/games/friends/search/?q=${encodeURIComponent(query)}`)
+      return data
+    } catch (error) {
+      throw error
+    }
+  }
+
   const sendFriendRequest = async (identifier) => {
     try {
-      console.log('Sending friend request for identifier:', identifier)
-      
-      // Отправляем запрос с friend_identifier
       const requestData = {
         friend_identifier: identifier.trim()
       }
-      
-      console.log('Request payload:', requestData)
-      
       const data = await apiRequest('/games/friends/', {
         method: 'POST',
         body: JSON.stringify(requestData),
       })
-      
-      console.log('Friend request response:', data)
       return data
     } catch (error) {
-      console.error('Friend request failed:', error)
-      // Передаем ошибку дальше для обработки в компоненте
       throw error
     }
   }
@@ -407,12 +423,37 @@ export const useFriends = () => {
     }
   }
 
+  const cancelFriendRequest = async (requestId) => {
+    try {
+      const data = await apiRequest(`/games/friends/${requestId}/cancel/`, {
+        method: 'POST',
+      })
+      return data
+    } catch (error) {
+      throw error
+    }
+  }
+
+  const getFriendProfile = async (friendId) => {
+    try {
+      const data = await apiRequest(`/games/friends/${friendId}/profile/`)
+      return data
+    } catch (error) {
+      throw error
+    }
+  }
+
   return {
     getFriends,
-    getFriendRequests,
+    getIncomingRequests,
+    getSentRequests,
+    getArchivedRequests,
+    searchUsers,
     sendFriendRequest,
     acceptFriendRequest,
     rejectFriendRequest,
+    cancelFriendRequest,
+    getFriendProfile
   }
 }
 
